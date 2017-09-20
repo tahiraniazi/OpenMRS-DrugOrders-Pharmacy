@@ -5,6 +5,7 @@
     def last_dispatch_date = "";
     def patient_instr = "";
     def pharma_instr = "";
+    def pharma_comm = "";
 %>
 
 <!--
@@ -44,7 +45,11 @@
                         <div class="drugDetails">
                             
                             <span class="fields">Dose: ${ groupOrder.value.dose } ${ groupOrder.value.doseUnits.getDisplayString() }, Quantity: ${ groupOrder.value.quantity } ${ groupOrder.value.quantityUnits.getDisplayString() }</span><br/><br/>
-                        
+                            
+                            <% if(allergicDrugs.contains(groupOrderExtn.get(groupOrder.key).drugName.getDisplayString().toUpperCase()) && groupOrderExtn.get(groupOrder.key).isAllergicOrderReasons == null) { %>
+                                <span class="fields" id="note">PLEASE NOTE: The Patient is allergic to this drug. Cannot dispatch drug without a reason. Please contact the Orderer.</span><br/><br/>
+                            <% } %>
+                                
                             <% if(groupOrderExtn.get(groupOrder.key).pharmacistInstructions != null && groupOrderExtn.get(groupOrder.key).pharmacistInstructions != "null") { %>
                                 <% pharma_instr = groupOrderExtn.get(groupOrder.key).pharmacistInstructions; %>
                             <% } else { %>
@@ -66,21 +71,42 @@
                                 <label><strong>Instructions for the Patient:</strong></label>
                                 ${ patient_instr.replace("newline","<br/>") }
                             </div>
-                                
+                            
+                            <% if(groupOrderExtn.get(groupOrder.key).commentForOrderer != null && groupOrderExtn.get(groupOrder.key).commentForOrderer != "null") { %>
+                                <% pharma_comm = groupOrderExtn.get(groupOrder.key).commentForOrderer; %>
+                            
+                                <div class="fields" id="view_order_detail">
+                                    <label><strong>Comments for the Physician:</strong></label>
+                                    ${ pharma_comm.replace("newline","<br/>") }
+                                </div>
+                            <% } %>
+                            
                             <!--
                                 Display fields to enter drug expiry date and a note for the Patient if orders are selected to be dispatched.
                             -->
-                            <div class="dispatchFields"><br/>
-                                <div class="fields" id="view_order_detail">
-                                    <label>Note<span id="asterisk">*</span></label>
-                                    <textarea maxlength="225" class="commentForPatient" name="commentForPatient" placeholder="Enter notes for Patient" required="required"></textarea>
-                                </div><br/>
                                 
-                                <div class="fields" id="view_order_detail">
-                                    <div id="order_label"><label>Expiry<span id="asterisk">*</span></label></div>
-                                    <div id="order_value"><input type="text" class="drugExpiryDate" name="drugExpiryDate" placeholder="MM/DD/YYYY" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" required="required" ></div>
-                                </div><br/><br/><br/>
-                            </div>
+                            <% if(!(allergicDrugs.contains(groupOrderExtn.get(groupOrder.key).drugName.getDisplayString().toUpperCase()) && groupOrderExtn.get(groupOrder.key).isAllergicOrderReasons == null)) { %>
+                            
+                                <div class="dispatchFields"><br/>
+                                    <div class="fields" id="view_order_detail">
+                                        <label>Note<span id="asterisk">*</span></label>
+                                        <textarea maxlength="912" class="commentForPatient" name="commentForPatient" placeholder="Enter notes for Patient" required="required"></textarea>
+                                    </div><br/>
+
+                                    <div class="fields" id="view_order_detail">
+                                        <div id="order_label"><label>Expiry<span id="asterisk">*</span></label></div>
+                                        <div id="order_value"><input type="text" class="drugExpiryDate" name="drugExpiryDate" placeholder="MM/DD/YYYY" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" required="required" /></div>
+                                    </div><br/><br/><br/>
+                                </div>
+                                
+                            <% } else { %>
+                            
+                                <div class="hidden">
+                                    <textarea class="commentForPatient" name="commentForPatient">N/A</textarea>
+                                    <input class="drugExpiryDate" name="drugExpiryDate" type="text" value="01/01/0001" />
+                                </div>
+                            
+                            <% } %>
                             
                             <div class="additionalInformation"><br/>
                                 <div class="fields" id="view_order_detail">
@@ -195,7 +221,7 @@
                     <label>Comments</label>
                 </div>
                 <div class="fields">
-                    <textarea maxlength="225" id="groupComments" name="groupComments" placeholder="Enter comments for the Orderer"></textarea><br/>
+                    <textarea maxlength="912" id="groupComments" name="groupComments" placeholder="Enter comments for the Orderer"></textarea><br/>
                     <a href="#" id="emailLink" onclick="emailLink('${ orderList }','${ patientID }','${ patientName }','${ patientDOB.format('yyyy-MM-dd') }','${ patientAddr }','${ orderDetails }')" target="_top">Send a message to the Orderer</a> <br/><br/>
                     
                     <div id="btn-place">
@@ -221,13 +247,5 @@
         jq(this).parent().parent().nextAll(".drugDetails").first().children(".additionalInformation").hide();
         jq(this).hide();
         jq(this).prev(".icon-plus-sign").show();
-    });
-    
-    jq('.drugExpiryDate').datepicker({
-        minDate:  new Date()
-    });
-    
-    jq('.drugExpiryDate').on('keydown keyup', function(e){
-        e.preventDefault();
     });
 </script>

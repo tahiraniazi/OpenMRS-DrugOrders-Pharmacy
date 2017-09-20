@@ -23,11 +23,13 @@ import org.openmrs.Concept;
 import org.openmrs.DrugOrder;
 import org.openmrs.Encounter;
 import org.openmrs.EncounterRole;
+import org.openmrs.Order;
 import org.openmrs.OrderFrequency;
 import org.openmrs.Patient;
 import org.openmrs.Person;
 import org.openmrs.Provider;
 import org.openmrs.api.APIException;
+import org.openmrs.api.OrderContext;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.allergyapi.Allergies;
 import org.openmrs.module.allergyapi.Allergy;
@@ -82,6 +84,13 @@ public class DrugordersHomePageController {
         drugName = drugName.trim();
         diagnosis = diagnosis.trim();
         
+        // If selected Start Date is before the current Date, then set Start Date as Current Date.
+        if(startDate != null){
+            if(startDate.before(new Date())){
+                startDate = new Date();
+                InfoErrorMessageUtil.flashInfoMessage(session, "Please note that the Start Date can only be set to on or after the current date.");
+            }
+        }
         /*
           Get the list of drugs the Patient is allergic to
         */
@@ -89,10 +98,15 @@ public class DrugordersHomePageController {
         ArrayList<String> allergicDrugList = new ArrayList<>();
         
         if(allergies.size() > 0){
+            int count = 0;
             for(Allergy allergy : allergies){
                 allergicDrugList.add(allergy.getAllergen().toString().toUpperCase());
-                model.addAttribute("allergicDrugs", allergicDrugList);
+                if(count<allergies.size()-1){
+                    allergicDrugList.add(",");
+                    count++;
+                }
             }
+            model.addAttribute("allergicDrugs", allergicDrugList);
         } else {
             model.addAttribute("allergicDrugs", "null");
         }
@@ -122,7 +136,7 @@ public class DrugordersHomePageController {
                                 // Create a DrugOrder record
                                 int order = createNewDrugOrder(drugOrder, patient, drugName, route, dose, doseUnits, quantity, quantityUnits, frequency, duration, durationUnits);
                                 // Create a drugorders record
-                                createDrugOrderExtension(drugorder, order, patientID, drugName, startDate, orderReason, diagnosis, priority, "Active", refill, interval, patientInstrn, pharmacistInstrn);
+                                createDrugOrderExtension(drugorder, order, drugName, startDate, orderReason, diagnosis, priority, "Active", refill, interval, patientInstrn, pharmacistInstrn);
                                 // Add the name of the drug to the list of current drug orders.
                                 currentOrders.add(drugName.toUpperCase());
                                 // If the orderId property value retrieved is not null, then the order is a created to be a part of an existing order group.
@@ -150,7 +164,7 @@ public class DrugordersHomePageController {
                     for(String reason : planOrderReason){
                         if(!reason.equals("")){
                             // Fix saving multiple lines of text input.
-                            String [] reasons = reason.split("\n");
+                            String [] reasons = reason.trim().split("\n");
                             StringBuilder sb = new StringBuilder();
                             for(String s : reasons){
                                 sb.append(s.trim()).append("newline");
@@ -183,7 +197,7 @@ public class DrugordersHomePageController {
                                 // Create a DrugOrder record
                                 int order = createNewDrugOrder(drugOrder, patient, standardPlan.getDrugId().getDisplayString(), standardPlan.getRoute().getDisplayString(), standardPlan.getDose().toString(), standardPlan.getDoseUnits().getDisplayString(), standardPlan.getQuantity().toString(), standardPlan.getQuantityUnits().getDisplayString(), standardPlan.getFrequency().getName(), standardPlan.getDuration(), standardPlan.getDurationUnits().getDisplayString());
                                 // Create a drugorders record
-                                createDrugOrderExtension(drugorder, order, patientID, standardPlan.getDrugId().getDisplayString(), startDate, "", selectedPlan, priority, "Draft-Plan", 0, 0, patientInstrn, pharmacistInstrn);
+                                createDrugOrderExtension(drugorder, order, standardPlan.getDrugId().getDisplayString(), startDate, "", selectedPlan, priority, "Draft-Plan", 0, 0, patientInstrn, pharmacistInstrn);
                                 // Add the name of the drug to the list of current drug orders.
                                 currentOrders.add(standardPlan.getDrugId().getDisplayString().toUpperCase());
                                 
@@ -282,7 +296,7 @@ public class DrugordersHomePageController {
                         for(String reason : reviseOrderReason){
                             if(!reason.equals("")){
                                 // Fix saving multiple lines of text input.
-                                String [] reasons = reason.split("\n");
+                                String [] reasons = reason.trim().split("\n");
                                 StringBuilder sb = new StringBuilder();
                                 for(String s : reasons){
                                     sb.append(s.trim()).append("newline");
@@ -302,7 +316,7 @@ public class DrugordersHomePageController {
                             // Create a DrugOrder record..
                             int order = createNewDrugOrder(drugOrder, patient, orderExtn.getDrugName().getDisplayString(), orderMain.getRoute().getDisplayString(), orderMain.getDose().toString(), orderMain.getDoseUnits().getDisplayString(), orderMain.getQuantity().toString(), orderMain.getQuantityUnits().getDisplayString(), orderMain.getFrequency().getName(), orderMain.getDuration(), orderMain.getDurationUnits().getDisplayString());
                             // Create a drugorders record
-                            createDrugOrderExtension(drugorder, order, patientID, orderExtn.getDrugName().getDisplayString(), Calendar.getInstance().getTime(), "", orderExtn.getAssociatedDiagnosis().getDisplayString(), orderExtn.getPriority().getDisplayString(), "Active-Group", orderExtn.getRefill(), orderExtn.getRefillInterval(), "", "");
+                            createDrugOrderExtension(drugorder, order, orderExtn.getDrugName().getDisplayString(), Calendar.getInstance().getTime(), "", orderExtn.getAssociatedDiagnosis().getDisplayString(), orderExtn.getPriority().getDisplayString(), "Active-Group", orderExtn.getRefill(), orderExtn.getRefillInterval(), "", "");
                             // Add the name of the drug to the list of current drug orders.
                             currentOrders.add(orderExtn.getDrugName().getDisplayString().toUpperCase());
                                     
@@ -386,7 +400,7 @@ public class DrugordersHomePageController {
                             // Create a DrugOrder record.
                             int order = createNewDrugOrder(drugOrder, patient, orderExtn.getDrugName().getDisplayString(), orderMain.getRoute().getDisplayString(), orderMain.getDose().toString(), orderMain.getDoseUnits().getDisplayString(), orderMain.getQuantity().toString(), orderMain.getQuantityUnits().getDisplayString(), orderMain.getFrequency().getName(), orderMain.getDuration(), orderMain.getDurationUnits().getDisplayString());
                             // Create a drugorders record.
-                            createDrugOrderExtension(drugorder, order, patientID, orderExtn.getDrugName().getDisplayString(), Calendar.getInstance().getTime(), "", orderExtn.getAssociatedDiagnosis().getDisplayString(), orderExtn.getPriority().getDisplayString(), "Draft-Plan", orderExtn.getRefill(), orderExtn.getRefillInterval(), "", "");
+                            createDrugOrderExtension(drugorder, order, orderExtn.getDrugName().getDisplayString(), Calendar.getInstance().getTime(), "", orderExtn.getAssociatedDiagnosis().getDisplayString(), orderExtn.getPriority().getDisplayString(), "Draft-Plan", orderExtn.getRefill(), orderExtn.getRefillInterval(), "", "");
                             // Create an entry in the Plan Orders table.
                             createPlanOrder(order, planID, patientID, orderExtn.getAssociatedDiagnosis().getDisplayString());
                             // Add the name of the drug to the list of current drug orders.
@@ -414,49 +428,39 @@ public class DrugordersHomePageController {
                     }
                     else {
                         // Retrieve the original order record to create a new order with the same specifications.
-                        drugorders originalOrder = Context.getService(drugordersService.class).getDrugOrderByOrderID(orderId);
+                        DrugOrder drugOrder = (DrugOrder) Context.getOrderService().getOrder(orderId);
+                        drugorders drugorder = Context.getService(drugordersService.class).getDrugOrderByOrderID(orderId);
+                        String status = drugorder.getOrderStatus();
+                        
                         // Void the original order
-                        Context.getOrderService().voidOrder(Context.getOrderService().getOrder(orderId), "Discontinued");
-
-                        DrugOrder drugOrder = null;
-                        drugorders drugorder = null;
-
+                        Context.getOrderService().voidOrder(Context.getOrderService().getOrder(orderId), "Order modified and replaced.");
+                        
                         // Create a DrugOrder record.
                         int order = createNewDrugOrder(drugOrder, patient, drugName, route, dose, doseUnits, quantity, quantityUnits, frequency, duration, durationUnits);
                         // Create a drugorders record.
-                        createDrugOrderExtension(drugorder, order, patientID, drugName, startDate, orderReason, diagnosis, priority, "Active", refill, interval, patientInstrn, pharmacistInstrn);
-                        // Remove the name of the drug from the original order from the list of current drug orders.
-                        currentOrders.remove(originalOrder.getDrugName().getDisplayString().toUpperCase());
-                        // Add the name of the selected drug to the list of current drug orders.
-                        currentOrders.add(drugName.toUpperCase());
+                        createDrugOrderExtension(drugorder, order, drugName, startDate, orderReason, diagnosis, priority, status, refill, interval, patientInstrn, pharmacistInstrn);
 
                         /*
                           When editing an individual order, ensure to record its status as it was before to ensure that the Single, Group and Med Plan orders are segregated.
                         */
-                        switch (originalOrder.getOrderStatus()) {
-                            case "Active":
-                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setOrderStatus("Active");
-                                break;
+                        switch (status) {
                             case "Active-Plan":
-                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setOrderStatus("Active-Plan");
-                                Context.getService(planordersService.class).getPlanOrderByOrderID(originalOrder.getOrderId()).setOrderId(order);
+                                Context.getService(planordersService.class).getPlanOrderByOrderID(drugorder.getOrderId()).setOrderId(order);
                                 break;
                             case "Draft-Plan":
-                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setOrderStatus("Draft-Plan");
-                                Context.getService(planordersService.class).getPlanOrderByOrderID(originalOrder.getOrderId()).setOrderId(order);
+                                Context.getService(planordersService.class).getPlanOrderByOrderID(drugorder.getOrderId()).setOrderId(order);
                                 break;
                             case "Active-Group":
-                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setOrderStatus("Active-Group");
-                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setGroupId(originalOrder.getGroupId());
-                                originalOrder.setGroupId(null);
+                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setGroupId(drugorder.getGroupId());
+                                drugorder.setGroupId(null);
                                 break;
                             case "Draft-Group":
-                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setOrderStatus("Active-Group");
-                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setGroupId(originalOrder.getGroupId());
-                                originalOrder.setGroupId(null);
+                                Context.getService(drugordersService.class).getDrugOrderByOrderID(order).setGroupId(drugorder.getGroupId());
+                                drugorder.setGroupId(null);
                                 break;
-                        }
-                        originalOrder.setOrderStatus("Non-Active");
+                        }                  
+                        
+                        drugorder.setOrderStatus("Non-Active");
                         InfoErrorMessageUtil.flashInfoMessage(session, "Order Changes Saved!");
                     }
                     
@@ -483,7 +487,7 @@ public class DrugordersHomePageController {
                             // Create a DrugOrder record.
                             int order = createNewDrugOrder(drugOrder, patient, name, route, dose, doseUnits, quantity, quantityUnits, frequency, duration, durationUnits);
                             // Create a drugorders record.
-                            createDrugOrderExtension(drugorder, order, patientID, name, startDate, orderReason, diagnosis, priority, "Active", refill, interval, patientInstrn, pharmacistInstrn);
+                            createDrugOrderExtension(drugorder, order, name, startDate, orderReason, diagnosis, priority, "Active", refill, interval, patientInstrn, pharmacistInstrn);
                             // Add the name of the drug to the list of current drug orders.
                             currentOrders.add(name.toUpperCase());
 
@@ -498,8 +502,15 @@ public class DrugordersHomePageController {
                   Save the draft of orders created for medication plan drugs.
                 */
                 if ("saveDraft".equals(action)){
+                    // Get the list of all Orders for the Patient.
+                    List<Order> orders = Context.getOrderService().getAllOrdersByPatient(patient);
                     // Get the list of med plan related drug orders that are currently in 'Draft' status and set the status to 'Active'.
-                    List<drugorders> draftOrders = Context.getService(drugordersService.class).getDrugOrdersByPatientAndStatus(patient, "Draft-Plan");
+                    List<drugorders> draftOrders = new ArrayList<>();
+                    for(Order order : orders){
+                        if(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()).getOrderStatus().equals("Draft-Plan")){
+                            draftOrders.add(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()));
+                        }
+                    }
                     
                     // Check if Physician has provided instructions to the Patient and to the Pharmacist.
                     boolean detailsProvided = true;
@@ -522,8 +533,16 @@ public class DrugordersHomePageController {
             }
         }
         
+        // Get the list of all Orders for the Patient.
+        List<Order> orders = Context.getOrderService().getAllOrdersByPatient(patient);
         // Get the list of group drug orders that are currently in 'Draft' status and notify the Physician.
-        List<drugorders> draftGroupOrders = Context.getService(drugordersService.class).getDrugOrdersByPatientAndStatus(patient, "Draft-Group");
+        List<drugorders> draftGroupOrders = new ArrayList<>();
+        for(Order order : orders){
+            if(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()).getOrderStatus().equals("Draft-Group")){
+                draftGroupOrders.add(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()));
+            }
+        }
+        
         for(drugorders draftOrder : draftGroupOrders){
             InfoErrorMessageUtil.flashErrorMessage(session, "Please update instructions on Order Number "+draftOrder.getOrderId());
         }
@@ -535,11 +554,12 @@ public class DrugordersHomePageController {
       This function will save the standard parameters associated with the Order and Drug Order class.
       It will save the order's basic parameters in the drug_orders table and create an Drug Order record.
     */
-    private int createNewDrugOrder( DrugOrder order, Patient patient, String drugNameConfirmed, String route,
+    private int createNewDrugOrder( DrugOrder drugOrder, Patient patient, String drugNameConfirmed, String route,
                                     String dose, String doseUnits, String quantity, String quantityUnits,
                                     String frequency, Integer duration, String durationUnits) {
 
-        order = new DrugOrder();
+        // Create a new drug order.
+        DrugOrder order = new DrugOrder();
         // Save the drug concept associated with the order.
         order.setConcept(ConceptName(drugNameConfirmed));
         order.setDrug(Context.getConceptService().getDrugByNameOrId(drugNameConfirmed));
@@ -565,7 +585,7 @@ public class DrugordersHomePageController {
             if(prov.getPerson().equals(person)){
                 provider = prov;
                 providerFound = true;
-            }
+            } 
         }
             
         if(!providerFound)
@@ -578,6 +598,15 @@ public class DrugordersHomePageController {
         order.setPatient(patient);
         order.setEncounter(enc);
         order.setOrderer(provider);
+        
+        // Set the OrderContext
+        OrderContext orderContext = new OrderContext();
+        orderContext.setCareSetting(careSetting);
+        orderContext.setOrderType(Context.getOrderService().getOrderTypeByName("Drug Order"));
+        
+        // If an existing order is being modified, set the reference to the previous order ID.
+        if(drugOrder != null)
+            order.setPreviousOrder(Context.getOrderService().getOrder(drugOrder.getOrderId()));
 
         order.setRoute(ConceptName(route));
         order.setDose(Double.valueOf(dose));
@@ -589,7 +618,7 @@ public class DrugordersHomePageController {
         OrderFrequency orderFrequency = Context.getOrderService().getOrderFrequencyByConcept(ConceptName(frequency));
         order.setFrequency(orderFrequency);
         order.setNumRefills(0);
-        order = (DrugOrder) Context.getOrderService().saveOrder(order, null);
+        order = (DrugOrder) Context.getOrderService().saveOrder(order, orderContext);
         int orderID = order.getOrderId();
         return orderID; 
     }
@@ -598,12 +627,12 @@ public class DrugordersHomePageController {
       This function will save the additional parameters associated with the drug orders.
       It saves data in the drug_order_extn table.
     */
-    private void createDrugOrderExtension(drugorders drugorder, int drugOrderID, int patientID, String drugName, Date startDate, String orderReason, String diagnosis, String priority, String status, int refill, int interval, String patientInstrn, String pharmacistInstrn){
+    private void createDrugOrderExtension(drugorders drugorder, int drugOrderID, String drugName, Date startDate, String orderReason, String diagnosis, String priority, String status, int refill, int interval, String patientInstrn, String pharmacistInstrn){
+        // Create a new drugorders record.
         drugorder = new drugorders();
         drugorder.setOrderId(drugOrderID);
         drugorder.setDrugName(ConceptName(drugName));
         drugorder.setStartDate(startDate);
-        drugorder.setPatientId(patientID);
         drugorder.setRefill(refill);
         drugorder.setRefillInterval(interval);
         drugorder.setOrderStatus(status);
@@ -615,18 +644,21 @@ public class DrugordersHomePageController {
         drugorder.setAssociatedDiagnosis(ConceptName(diagnosis));
             
         if(!(orderReason).equals("")){
+            // Patient is identified to be allergic to this drug.
+            drugorder.setIsAllergic(1);
             // Fix saving multiple lines of text input.
-            String [] reason = orderReason.split("\n");
+            String [] reason = orderReason.trim().split("\n");
             StringBuilder sb = new StringBuilder();
             for(String s : reason){
                 sb.append(s.trim()).append("newline");
             }
             drugorder.setIsAllergicOrderReasons(sb.substring(0, sb.length()-7));
-        }
+        } else
+            drugorder.setIsAllergic(0);
             
         if(!(patientInstrn).equals("")){
             // Fix saving multiple lines of text input.
-            String [] instructions = patientInstrn.split("\n");
+            String [] instructions = patientInstrn.trim().split("\n");
             StringBuilder sb = new StringBuilder();
             for(String s : instructions){
                 sb.append(s.trim()).append("newline");
@@ -636,7 +668,7 @@ public class DrugordersHomePageController {
             
         if(!(pharmacistInstrn).equals("")){
             // Fix saving multiple lines of text input.
-            String [] instructions = pharmacistInstrn.split("\n");
+            String [] instructions = pharmacistInstrn.trim().split("\n");
             StringBuilder sb = new StringBuilder();
             for(String s : instructions){
                 sb.append(s.trim()).append("newline");
@@ -676,7 +708,7 @@ public class DrugordersHomePageController {
         }
         else if(!(nonCoded.equals(""))){
             // Fix saving multiple lines of text input.
-            String [] instructions = nonCoded.split("\n");
+            String [] instructions = nonCoded.trim().split("\n");
             StringBuilder sb = new StringBuilder();
             for(String s : instructions){
                 sb.append(s.trim()).append("newline");
@@ -723,6 +755,15 @@ public class DrugordersHomePageController {
     }
     
     private List<drugorders> getOrders(Patient patient, String status){
-        return Context.getService(drugordersService.class).getDrugOrdersByPatientAndStatus(patient, status);
+        // Get the list of all Orders for the Patient.
+        List<Order> orders = Context.getOrderService().getAllOrdersByPatient(patient);
+        
+        List<drugorders> drugorders = new ArrayList<>();
+        for(Order order : orders){
+            if(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()).getOrderStatus().equals(status)){
+                drugorders.add(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()));
+            }
+        }
+        return drugorders;
     }
 }

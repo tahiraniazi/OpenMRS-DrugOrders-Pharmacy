@@ -66,7 +66,7 @@ public class AdministrationPageController {
                                 newplan.setPlanName(ConceptName(definePlanName.trim()));
                                 
                                 // Fix saving multiple lines of text input.
-                                String [] planDesc = definePlanDesc.split("\n");
+                                String [] planDesc = definePlanDesc.trim().split("\n");
                                 StringBuilder sb = new StringBuilder();
                                 for(String s : planDesc){
                                     sb.append(s.trim()).append("newline");
@@ -146,7 +146,7 @@ public class AdministrationPageController {
                             else {
                                 oldPlan.setPlanName(ConceptName(definePlanName.trim()));
                                 // Fix saving multiple lines of text input.
-                                String [] planDesc = definePlanDesc.split("\n");
+                                String [] planDesc = definePlanDesc.trim().split("\n");
                                 StringBuilder sb = new StringBuilder();
                                 for(String s : planDesc){
                                     sb.append(s.trim()).append("newline");
@@ -190,7 +190,9 @@ public class AdministrationPageController {
                             Context.getService(newplansService.class).getMedPlanByPlanID(planToDiscard).setPlanStatus("Non-Active");
                             Context.getService(newplansService.class).getMedPlanByPlanID(planToDiscard).setDiscardReason(discardReason);
                             InfoErrorMessageUtil.flashInfoMessage(session, "Medication Plan Discarded!");
-                        }                        
+                        } else
+                            InfoErrorMessageUtil.flashInfoMessage(session, "Drugs removed from the Medication Plan!");
+                        
                         break;
                     
                     /*

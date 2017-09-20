@@ -5,10 +5,13 @@
  */
 package org.openmrs.module.drugorders.fragment.controller;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import javax.servlet.http.HttpSession;
+import org.openmrs.Concept;
 import org.openmrs.DrugOrder;
+import org.openmrs.Order;
 import org.openmrs.Patient;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.drugorders.api.drugordersService;
@@ -51,6 +54,10 @@ public class PlanOrdersActiveFragmentController {
             }
         }
         
+        // Store the mapping of plan name to plan ID
+        HashMap<Integer, Concept> planName = new HashMap<>();
+        // Get the list of all Orders for the Patient.
+        List<Order> orders = Context.getOrderService().getAllOrdersByPatient(patient);
         /* 
           =========================================================================================
           To Display the list of medication plan related drug orders, with the status "Active-Plan"
@@ -68,14 +75,22 @@ public class PlanOrdersActiveFragmentController {
         HashMap<Integer,HashMap<Integer,drugorders>> ActivePlanExtn = new HashMap <>();
         
         // Retrieve the list of medication plan related drug orders, having the status "Active-Plan"
-        List<drugorders> orders = Context.getService(drugordersService.class).getDrugOrdersByPatientAndStatus(patient, "Active-Plan");
-        for(drugorders order : orders){
+        List<drugorders> drugorders = new ArrayList<>();        
+        for(Order order : orders){
+            if(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()).getOrderStatus().equals("Active-Plan")){
+                drugorders.add(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()));
+            }
+        }
+        
+        for(drugorders order : drugorders){
             // Retrieve the corresponding planorders record.
             planorders p_order = Context.getService(planordersService.class).getPlanOrderByOrderID(order.getOrderId());
             
             // If the selected plan related drug orders are not already retrieved, retrieve the orders and store the objects in ActivePlanMain and ActivePlanExtn HashMap.
             if(!ActivePlanMain.containsKey(p_order.getPlanId())){
-
+                
+                // Store the mapping of plan name to plan ID
+                planName.put(p_order.getPlanId(), order.getAssociatedDiagnosis());
                 // Storing HashMap<Order-ID, DrugOrder>
                 HashMap<Integer,DrugOrder> main = new HashMap<>();
                 // Storing HashMap<Order-ID, drugorders>
@@ -119,14 +134,22 @@ public class PlanOrdersActiveFragmentController {
         */
         HashMap<Integer,HashMap<Integer,drugorders>> DraftPlanExtn = new HashMap <>();
         
+        drugorders.clear();
         // Retrieve the list of medication plan related drug orders, with the status "Draft-Plan"
-        orders = Context.getService(drugordersService.class).getDrugOrdersByPatientAndStatus(patient, "Draft-Plan");
-        for(drugorders order : orders){
+        for(Order order : orders){
+            if(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()).getOrderStatus().equals("Draft-Plan")){
+                drugorders.add(Context.getService(drugordersService.class).getDrugOrderByOrderID(order.getOrderId()));
+            }
+        }
+        
+        for(drugorders order : drugorders){
             planorders p_order = Context.getService(planordersService.class).getPlanOrderByOrderID(order.getOrderId());
 
             // If the selected plan related orders are not already retrieved, retrieve the orders
             if(!DraftPlanMain.containsKey(p_order.getPlanId())){
 
+                // Store the mapping of plan name to plan ID
+                planName.put(p_order.getPlanId(), order.getAssociatedDiagnosis());
                 // Storing HashMap<Order-ID, DrugOrder>
                 HashMap<Integer,DrugOrder> main = new HashMap<>();
                 // Storing HashMap<Order-ID, drugorders>
@@ -151,5 +174,7 @@ public class PlanOrdersActiveFragmentController {
             
         model.addAttribute("DraftPlanMain", DraftPlanMain);
         model.addAttribute("DraftPlanExtn", DraftPlanExtn);
+        
+        model.addAttribute("planName", planName);
     }
 }

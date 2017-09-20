@@ -30,13 +30,17 @@ jq(document).ready( function() {
         enableConfirmBtn();
     }); 
     
-    var lines = 5;
+    var lines = 16;
     jq("textarea").on("keydown", function(e){
         // Check the number of rows entered in the given textarea
         var newLines = $(this).val().split("\n").length;
         if(e.keyCode === 13 && newLines >= lines) {
+            alert("Field next line limit reached!");
             return false;
         }
+        
+        if(jq(this).val().length >= 912 && e.keyCode !== 8 && e.keyCode !== 46)
+            alert("Field length limit reached!");
         
         /*
         * Disable typing whitespaces before entering any data in the textarea fields. 
@@ -61,6 +65,18 @@ jq(document).ready( function() {
             else
                 this.style.borderColor = "";
         });
+    });
+    
+    jq('.drugExpiryDate').datepicker({
+        minDate:  new Date(),
+        nextText: "===>",
+        prevText: "===<",
+        changeYear: true,
+        changeMonth: true
+    });
+    
+    jq('.drugExpiryDate').on('keydown keyup', function(e){
+        e.preventDefault();
     });
 });
 
